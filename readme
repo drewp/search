@@ -1,0 +1,79 @@
+user perms, including explicit 'show private' for when kelsi/drew are logged in, in case someone is watching
+
+put dates on records where possible
+
+schema:
+source (diarybot)
+type (post, tags, comment)
+created
+creator (user)
+text
+visibleTo: kelsi drewp public
+extraPrivate: true for extra click
+
+sources:
+photo tags / desc / filename (exact substr only)
+comments on anything
+blog entries
+all plain web pages
+moinmoin wiki
+phone sms
+chat
+email
+source code (special tokenization)
+whatsplayingnext movies
+delicious
+phone book from openidproxy
+maps locs
+diarybot
+
+page API:
+query autocomplete
+query run
+
+just json proxy for elastic that enforces permissions?
+
+/search ? q=some+string & source=photo (Cookie for user)
+{
+    "hits" : {
+	"total" : 2,
+	"hits" : [ 
+	    {
+		"_index" : "twitter",
+		"_type" : "tweet",
+		"_score" : 1.0, 
+		"_source" : { 
+		    "user": "kimchy", 
+		    "postDate": "2009-11-15T14:12:12", 
+		    "message": "Another tweet, will it be indexed?"}}]}}
+
+/complete ? q=some+string & source=photo
+{
+    "hits" : [
+	{
+	    html: "some <em>text</em> here",
+	    source: "photo"
+	},
+    ],
+    // maybe some top-score match that should be added in the text box
+}
+
+POST /index ? source=photo
+{ uri: ..., text: ..., title: ..., modified: 2011-04-02T00:00:00-08:00 }
+\n more
+  
+GET /index/latest ? source=photo
+{ modified: 2011-04-02T00:00:00-08:00 }
+
+DELETE /index ? source=photo to reset
+
+-----
+
+each data source can receive a 'reindex' command which may DELETE its
+indices, may fetch /index/latest, and then makes POSTS to /index with
+its docs.
+
+might be nice for the source to apply a version on the index (or each
+of the docs inside?) and get that later, to know if it has a new
+version of the docs to submit. 
+
