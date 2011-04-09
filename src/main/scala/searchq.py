@@ -40,8 +40,11 @@ class index(object):
         web.header("content-type", "application/xhtml+xml")
         return open("src/main/webapp/index.html").read()
 
+
 app = web.application((
     r'/', 'index',
     r'/search', 'search',
     ), globals())
-app.run()
+application = app.wsgifunc()
+# run with:
+# gunicorn -b 0.0.0.0:9077 -w 4 searchq:application
