@@ -18,7 +18,7 @@ case class HitsResponse(hits: Hits)
 class SearchApp extends ScalatraServlet {
   implicit val formats = net.liftweb.json.DefaultFormats
 
-  val elastic = :/("localhost", 9200) / "main";
+  val elastic = :/("bang", 9200) / "main";
   // everything is in one type, with an ordinary source attribute to
   // separate the data sources
   val elasticTypeName = "doc"; 

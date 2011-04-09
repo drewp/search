@@ -1,7 +1,7 @@
 #!/usr/bin/python
 import web, json, restkit
 
-elastic = restkit.Resource("http://localhost:9200/main")
+elastic = restkit.Resource("http://bang:9200/main")
 
 class search(object):
     def GET(self):
