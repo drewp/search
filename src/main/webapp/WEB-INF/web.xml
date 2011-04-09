@@ -8,9 +8,20 @@ PUBLIC "-//Sun Microsystems, Inc.//DTD Web Application 2.2//EN"
     <servlet-name>SearchApp</servlet-name>
     <servlet-class>SearchApp</servlet-class>
   </servlet>
+
+  <servlet-mapping>
+    <servlet-name>default</servlet-name>
+    <url-pattern>/</url-pattern>
+  </servlet-mapping>
   
   <servlet-mapping>
     <servlet-name>SearchApp</servlet-name>
-    <url-pattern>/*</url-pattern>
+    <url-pattern>/index</url-pattern>
   </servlet-mapping>
+
+  <servlet-mapping>
+    <servlet-name>SearchApp</servlet-name>
+    <url-pattern>/search</url-pattern>
+  </servlet-mapping>
+
 </web-app>

@@ -23,11 +23,8 @@ class SearchApp extends ScalatraServlet {
   // separate the data sources
   val elasticTypeName = "doc"; 
 
-  get("/") {
-    <html>
-      <head><title>search</title></head>
-      <body>full-text search interface</body>
-    </html>
+  before {
+    contentType = "application/json"
   }
 
   post("/index") {
