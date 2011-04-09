@@ -6,25 +6,75 @@
     <title></title>
     <style type="text/css" media="all">
       /* <![CDATA[ */
-      
+body {
+    border: 23px solid #898989;
+    font-family: sans-serif;
+    height: 100%;
+    margin: 0;
+    padding: 13px;
+}
+#search {
+ background: none repeat scroll 0 0 #404040;
+    color: #FFFFFF;
+    margin: 0;
+    padding: 21px;
+}
+      #results div {
+	  margin: 17px 0;
+	  width: 43em;
+      }
+      em {
+	  font-style: normal;
+	  font-weight: bold;
+      }
+      span.thumb {
+	  display: inline-block;
+	  height: 66px;
+	  vertical-align: middle;
+	  width: 86px;
+      }
+      span.thumb img {
+	  border: 1px solid #595960;
+	  box-shadow: 3px 3px 6px #9898B5;
+      }
+      a {
+	  text-decoration: none;
+	  color: default;
+      } 
       /* ]]> */
     </style>
-    <script type="text/javascript" src="jquery-1.5.1.min.js"></script>
+    <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.5.1/jquery.min.js"></script>
     <script type="text/javascript">
       // <![CDATA[
 $(function () {
-    $("input[name=q]").change(function (ev) {
+
+    function refresh(ev) {
 	var q = $(this).val();
-	$.getJSON("/search", {source: "sfd", q: q}, function (ret) { 
-	    console.log("Search", ret);
+	$("#results").empty();
+	if (!q) { 
+	    return;
+	}
+	$.getJSON("search", {source: "photo", q: q}, function (ret) { 
+	    $("#results").empty();
+	    $.each(ret, function (i, row) {
+		var div = $("<div>");
+		div.html(row.text);
+		div.prepend($("<span>").addClass("thumb").append(
+		    $("<img>").attr("src", row.uri + "?size=thumb")));
+		div.wrapInner($("<a>").attr("href", row.view || row.uri));
+		$("#results").append(div);
+	    });
 	});
-    });
+    }
+
+    $("input[name=q]").change(refresh).keyup(refresh);
+    refresh();
 });
       // ]]>
     </script>
   </head>
   <body>
-    <p>Search: <input type="text" name="q"/></p>
+    <p id="search">Search: <input type="text" name="q"/></p>
     <div id="results">
     </div>
   </body>
