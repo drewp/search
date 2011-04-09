@@ -4,12 +4,20 @@ import Http._
 import net.liftweb.json.JsonAST._
 import net.liftweb.json.JsonDSL._
 import net.liftweb.json.JsonParser._
+import net.liftweb.json.Merge
 import java.net.URLEncoder
+
+
+case class Highlight(text: List[String])
+case class Source(source: String, view: Option[String])
+case class Hit(_score: Double, _index: String, _id: String, _type: String, 
+	       _source: Source, highlight: Highlight)
+case class Hits(hits: List[Hit])
+case class HitsResponse(hits: Hits)
 
 class SearchApp extends ScalatraServlet {
   implicit val formats = net.liftweb.json.DefaultFormats
 
-  val http = new Http
   val elastic = :/("localhost", 9200) / "main";
   // everything is in one type, with an ordinary source attribute to
   // separate the data sources
@@ -34,6 +42,7 @@ class SearchApp extends ScalatraServlet {
     val doc = parse(request.body) merge ("source" -> params("source"))
     val uri = (doc \ "uri").children(0).asInstanceOf[JString].s
     
+    val http = new Http
     http.x(elastic / elasticTypeName / URLEncoder.encode(uri, "UTF-8") <<< 
 	   compact(render(doc)) as_str)
   }
@@ -44,6 +53,7 @@ class SearchApp extends ScalatraServlet {
     // todo: this is supposed to be a GET, but I think elastic is ok
     // with me sending the wrong method. I couldn't find how to force
     // the method name in dispatch.
+    val http = new Http
     http.x(elastic / "_search" <<? Map("_pretty" -> "true") << compact(render(
       ("query" -> ("term" -> ( "source" -> "photo" )))
     )) as_str)
@@ -56,7 +66,8 @@ class SearchApp extends ScalatraServlet {
      *
   * 
     */
-    var elasticResponse = parse(http.x(elastic / "_search" << compact(render(
+    val http = new Http
+    val elasticResponse = parse(http.x(elastic / "_search" << compact(render(
       ("query" -> 
        ("filtered" -> (
 	 ("query" -> (
@@ -73,16 +84,19 @@ class SearchApp extends ScalatraServlet {
       // would be nice to turn off _source, since those can be huge
     )) as_str))
 
-    case class Highlight(text: List[String])
-    case class Hit(_score: Int, _index: String, _id: String, _type: String, highlight: Highlight)
-    case class Hits(hits: List[Hit])
-    case class HitsResponse(hits: Hits)
     val extracted = elasticResponse.extract[HitsResponse]
-    println(extracted)
+
     compact(render(
-      ("hits" -> "h"
-       
-     )
+      extracted.hits.hits.map(h => Merge.merge(
+	("uri" -> h._id) ~
+	("text" -> h.highlight.text.mkString(" ")) ~
+	("source" -> h._source.source),
+	
+	h._source.view match {
+	  case None => JNothing
+	  case Some(view) => ("view" -> view)
+	})
+      )
     ))
   }
 }
