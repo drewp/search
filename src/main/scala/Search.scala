@@ -76,8 +76,9 @@ class SearchApp extends ScalatraServlet {
     case class Highlight(text: List[String])
     case class Hit(_score: Int, _index: String, _id: String, _type: String, highlight: Highlight)
     case class Hits(hits: List[Hit])
-//    val extracted = (elasticResponse \ "hits").extract[Hits]
-//    println(extracted)
+    case class HitsResponse(hits: Hits)
+    val extracted = elasticResponse.extract[HitsResponse]
+    println(extracted)
     compact(render(
       ("hits" -> "h"
        
