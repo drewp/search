@@ -23,10 +23,17 @@ class search(object):
                  })).body_string())
 
         web.header("Content-Type", "application/json")
-        return json.dumps(
-            [dict(uri=hit['_id'], text=' '.join(hit['highlight']['text']),
-                  source=hit['_source']['source'])
-             for hit in elasticResponse['hits']['hits']])
+        ret = []
+        for hit in elasticResponse['hits']['hits']:
+            s = hit['_source']
+            ret.append(dict(uri=hit['_id'],
+                            text=' '.join(hit['highlight']['text']),
+                            source=s['source']))
+            if 'view' in hit['_source']:
+                ret[-1]['view'] = s['view']
+                
+        return json.dumps(ret)
+
 
 class index(object):
     def GET(self):
