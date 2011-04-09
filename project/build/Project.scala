@@ -16,5 +16,5 @@ class build(info: ProjectInfo) extends DefaultWebProject(info) {
 
   val casbah = "com.mongodb.casbah" %% "casbah" % "2.0.1"
 
-  override val jettyPort = 9999
+  override val jettyPort = 9076
 }
