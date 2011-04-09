@@ -38,13 +38,10 @@ class search(object):
 class index(object):
     def GET(self):
         web.header("content-type", "application/xhtml+xml")
-        return open("../webapp/index.html").read()
-class jq(object):
-    def GET(self):
-        return open("../webapp/jquery-1.5.1.min.js").read()
+        return open("src/main/webapp/index.html").read()
+
 app = web.application((
     r'/', 'index',
-    r'/jquery-1.5.1.min.js', 'jq',
     r'/search', 'search',
     ), globals())
 app.run()
