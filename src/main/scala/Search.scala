@@ -52,7 +52,7 @@ class SearchApp extends ScalatraServlet {
     // the method name in dispatch.
     val http = new Http
     http.x(elastic / "_search" <<? Map("_pretty" -> "true") << compact(render(
-      ("query" -> ("term" -> ( "source" -> "photo" )))
+      ("query" -> ("term" -> ( "source" -> params("source") )))
     )) as_str)
   }
 
@@ -60,16 +60,13 @@ class SearchApp extends ScalatraServlet {
     /*
      param source=s1,s2,s3, or omit to search everything
      param q=text, where text is to be found in the 'text' attr of the docs
-     *
-  * 
     */
     val http = new Http
-    val elasticResponse = parse(http.x(elastic / "_search" << compact(render(
+    val elasticResponse = parse(http.x(elastic / "_search" <<? 
+				       Map("source" -> compact(render(
       ("query" -> 
        ("filtered" -> (
-	 ("query" -> (
-	   ("prefix" -> ("text" -> params("q")))
-	 )) ~
+	 ("query" -> ("prefix" -> ("text" -> params("q")))) ~
 	 ("filter" -> ("term" -> ("source" -> params("source"))))
        )
       )) ~ 
@@ -78,11 +75,10 @@ class SearchApp extends ScalatraServlet {
         ("post_tags" -> List("</em>")) ~
         ("fields" -> ("text" -> ("number_of_fragments" -> 2)))
       ))
-      // would be nice to turn off _source, since those can be huge
-    )) as_str))
+    ))) as_str))
 
     val extracted = elasticResponse.extract[HitsResponse]
-
+  
     compact(render(
       extracted.hits.hits.map(h => Merge.merge(
 	("uri" -> h._id) ~
