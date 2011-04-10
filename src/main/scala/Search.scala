@@ -62,14 +62,19 @@ class SearchApp extends ScalatraServlet {
      param q=text, where text is to be found in the 'text' attr of the docs
     */
     val http = new Http
+
+    val prefixQuery = JObject(List(JField("prefix", ("text" -> params("q")))))
+
+    val completeQuery = multiParams("source") match {
+      case Seq() => prefixQuery
+      case sources: Seq[String] => JObject(List(JField("filtered", (
+	("query" -> prefixQuery) ~
+	("filter" -> ("terms" -> ("source" -> sources)))
+      ))))
+    }
     val elasticResponse = parse(http.x(elastic / "_search" <<? 
 				       Map("source" -> compact(render(
-      ("query" -> 
-       ("filtered" -> (
-	 ("query" -> ("prefix" -> ("text" -> params("q")))) ~
-	 ("filter" -> ("term" -> ("source" -> params("source"))))
-       )
-      )) ~ 
+      ("query" -> completeQuery) ~ 
       ("highlight" -> (
         ("pre_tags" -> List("<em>")) ~
         ("post_tags" -> List("</em>")) ~

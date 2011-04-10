@@ -37,6 +37,15 @@ body {
 	  border: 1px solid #595960;
 	  box-shadow: 3px 3px 6px #9898B5;
       }
+      span.sourceName {
+	  display: inline-block;
+	  border: 1px outset gray;
+	  border-radius: 6px;
+	  padding: 7px;
+	  color: gray;
+	  background: #DEDEDE;
+	  margin-right: 15px;
+      }
       a {
 	  text-decoration: none;
 	  color: default;
@@ -47,34 +56,46 @@ body {
     <script type="text/javascript">
       // <![CDATA[
 $(function () {
-
+    var sources = ["photo", "sfd", "drewblog", "chat"];
     function refresh(ev) {
 	var q = $(this).val();
 	$("#results").empty();
 	if (!q) { 
 	    return;
 	}
-	$.getJSON("search", {source: "photo", q: q}, function (ret) { 
+	$.getJSON("search", {source: sources, q: q}, function (ret) { 
 	    $("#results").empty();
 	    $.each(ret, function (i, row) {
 		var div = $("<div>");
 		div.html(row.text);
-		div.prepend($("<span>").addClass("thumb").append(
-		    $("<img>").attr("src", row.uri + "?size=thumb")));
+		if (row.source == "photo") {
+		    div.prepend($("<span>").addClass("thumb").append(
+			$("<img>").attr("src", row.uri + "?size=thumb")));
+		} else {
+		    div.prepend($("<span>").addClass("sourceName")
+				.text(row.source));
+		}
 		div.wrapInner($("<a>").attr("href", row.view || row.uri));
 		$("#results").append(div);
 	    });
 	});
     }
 
-    $("input[name=q]").change(refresh).keyup(refresh);
+    $.each(sources, function (i, s) {
+	$("#sources").append($("<input>").attr({type: "checkbox", name: "source", value: s})).append(" "+s);
+    });
+
+    $("input[name=q]").change(refresh).keyup(refresh).focus();
     refresh();
 });
       // ]]>
     </script>
   </head>
   <body>
-    <p id="search">Search: <input type="text" name="q"/></p>
+    <div id="search">
+      <div>Search: <input type="text" name="q"/></div>
+      <div id="sources">Sources (checking these doesn't work yet): </div>
+    </div>
     <div id="results">
     </div>
   </body>
