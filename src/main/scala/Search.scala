@@ -66,10 +66,15 @@ class SearchApp extends ScalatraServlet {
     */
     val http = new Http
 
-    val prefixQuery = JObject(List(JField("prefix", ("text" -> params("q")))))
-
     val jsonQuery = compact(render(
-      ("query" -> prefixQuery) ~ 
+      ("query" -> ("query_string" -> (
+	// this analyzer, whatever it is, allows the user to search on
+	// other fields, which may be a security hole once I add the
+	// security stuff.
+	("query" -> params("q")) ~
+	("default_field" -> "text") ~
+	("default_operator" -> "OR")
+      ))) ~
       // a filter out here is only on results; it doesn't affect facet counts
       ("from" -> params.getOrElse("from", "0").toInt) ~
       ("size" -> params.getOrElse("size", "10").toInt) ~
@@ -85,7 +90,7 @@ class SearchApp extends ScalatraServlet {
     val elasticResponse = parse(
       http.x(elastic / "_search" <<? Map("source" -> jsonQuery) as_str)
     )
-
+    // errors from elastic are just falling right through, currently
     val extracted = elasticResponse.extract[HitsResponse]
   
     compact(render(
