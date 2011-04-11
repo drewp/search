@@ -82,6 +82,9 @@ $(function () {
       see also: https://github.com/paulirish/infinite-scroll
     */
     jQuery.ajaxSettings.traditional = true;
+    $("#report").ajaxError(function (ev, xhr, s, err) {
+	$(this).text("Error running search");
+    });
 
     var sources = ["photo", "sfd", "drewblog", "chat", "aribot"];
     var totalSpan = {}; // source : span
