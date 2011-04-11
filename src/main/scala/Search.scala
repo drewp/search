@@ -71,6 +71,8 @@ class SearchApp extends ScalatraServlet {
     val jsonQuery = compact(render(
       ("query" -> prefixQuery) ~ 
       // a filter out here is only on results; it doesn't affect facet counts
+      ("from" -> params.getOrElse("from", "0").toInt) ~
+      ("size" -> params.getOrElse("size", "10").toInt) ~
       ("filter" -> ("terms" -> ("source" -> multiParams("source")))) ~ 
       ("highlight" -> (
         ("pre_tags" -> List("<em>")) ~
