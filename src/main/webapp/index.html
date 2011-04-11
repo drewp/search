@@ -146,7 +146,7 @@ $(function () {
 	}
     }
 
-    function makeRow(row) {
+    function addRow(row) {
 	var newRow = $("<div>");
 	newRow.html(row.text);
 	if (row.source == "photo") {
@@ -157,6 +157,7 @@ $(function () {
 			   .text(row.source));
 	}
 	newRow.wrapInner($("<a>").attr("href", row.view || row.uri));
+	$("#results").append(newRow);
 	return newRow;
     }
 
@@ -166,11 +167,13 @@ $(function () {
 	  (or undefined, if there were no rows)
 	*/
 	var newRow;
+	// it would probably look good to do this in chunks for the
+	// large results, so the page gets some chances to scroll. But
+	// note that we will have to attach a scrollWatch to the last
+	// row somehow
 	for (var i=0; i < hits.length; i++) {
-	    newRow = makeRow(hits[i]);
-	    $("#results").append(newRow);
+	    newRow = addRow(hits[i]);
 	} 
-
 	return newRow;
     }
     
