@@ -6,22 +6,25 @@
     <title></title>
     <style type="text/css" media="all">
       /* <![CDATA[ */
-body {
-    border: 23px solid #898989;
-    font-family: sans-serif;
-    height: 100%;
-    margin: 0;
-    padding: 13px;
-}
-#search {
- background: none repeat scroll 0 0 #404040;
-    color: #FFFFFF;
-    margin: 0;
-    padding: 21px;
-}
+      body {
+	  border: 23px solid #898989;
+	  font-family: sans-serif;
+	  height: 100%;
+	  margin: 0;
+	  padding: 13px;
+      }
+      #search {
+	  background: none repeat scroll 0 0 #404040;
+	  color: #FFFFFF;
+	  margin: 0;
+	  padding: 21px;
+      }
+      input[type=text] {
+	  padding: 5px;
+      }
       #results div {
 	  margin: 17px 0;
-	  width: 43em;
+	  width: 47em;
       }
       em {
 	  font-style: normal;
@@ -50,22 +53,110 @@ body {
 	  text-decoration: none;
 	  color: default;
       } 
+      .total {
+	  color: #ABABAB;
+	  font-size: 60%;
+	  padding: 0 5px 0 2px;
+	  vertical-align: text-top;
+	  display: inline-block;
+	  width: 2em;
+      }
+      #report {
+	  color: #828282;
+	  font-size: 75%;
+      }
       /* ]]> */
     </style>
     <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.5.1/jquery.min.js"></script>
+    <script type="text/javascript" src="jquery.ba-bbq.min.js"></script>
+    <script type="text/javascript" src="underscore-min.js"></script>
     <script type="text/javascript">
       // <![CDATA[
 $(function () {
-    var sources = ["photo", "sfd", "drewblog", "chat"];
-    function refresh(ev) {
-	var q = $(this).val();
-	$("#results").empty();
-	if (!q) { 
+    jQuery.ajaxSettings.traditional = true;
+
+    var sources = ["photo", "sfd", "drewblog", "chat", "aribot"];
+    var totalSpan = {}; // source : span
+    var currentParams;
+
+    function init() {
+	$.each(sources, function (i, s) {
+	    var inp = $("<input>").attr({type: "checkbox", name: "source", 
+		value: s, id: "source-"+i, checked: true});
+
+	    totalSpan[s] = $("<span>").addClass("total");
+	    $("#sources").append(inp)
+		.append($("<label>").attr("for", "source-"+i).text(s))
+		.append(totalSpan[s]); 
+	});
+    }
+
+    function writeUiToFragment() {
+	var checkedSources = [];
+	$("input[name=source]:checked").each(function (i, s) { 
+	    checkedSources.push($(this).val());
+	});
+	checkedSources.sort();
+	var params = {
+	    source: checkedSources, 
+	    q: $("input[name=q]").val(), 
+	    from: 0}
+	$.bbq.pushState(params);
+	return params;
+    }
+
+    function writeFragmentToUi() {
+	var params = $.bbq.getState();
+	console.log("to ui", params);
+	$("input[name=q]").val(params.q || "");
+
+	if (!params['source']) {
+	    $("input[name=source]").attr("checked", true);
+	} else {
+	    $("input[name=source]").attr("checked", false);
+	    $.each(params['source'], function (i, s) {
+		$("#sources input[value="+s+"]").attr("checked", true);
+	    });
+	}
+	//offset
+    }
+
+    function onUiChange() {
+	var params = writeUiToFragment();
+	if (!_.isEqual(params, currentParams)) {
+	    runSearch(params);
+	}
+	return false;
+    }
+
+    function onHashChange(ev) {
+	var params = ev.getState();
+	if (!_.isEqual(params, currentParams)) {
+	    writeFragmentToUi();
+	    runSearch(params);
+	}
+    }
+
+    function runSearch(params) {
+	if (_.isEqual(params, currentParams)) {
 	    return;
 	}
-	$.getJSON("search", {source: sources, q: q}, function (ret) { 
+	currentParams = params;
+
+	// debounce, here
+
+	$("#results").empty();
+	$("#sources .total").text("0");
+	console.log("para", params)
+	if (!params.q || !params.source) { 
+	    $("#report").text("Nothing to search for.");
+	    return;
+	}
+	$("#report").text("Searching...");
+
+	$.getJSON("search", params, function (ret) { 
 	    $("#results").empty();
-	    $.each(ret, function (i, row) {
+	    $.each(ret.hits, function (i, row) {
 		var div = $("<div>");
 		div.html(row.text);
 		if (row.source == "photo") {
@@ -78,15 +169,21 @@ $(function () {
 		div.wrapInner($("<a>").attr("href", row.view || row.uri));
 		$("#results").append(div);
 	    });
+	    $.each(ret.sourceTotals, function (k, v) {
+		totalSpan[k].text(v);
+	    });
+	    $("#report").text("Found "+ret.totalHits+" hits in "+
+			      ret.took+" ms"); 
 	});
+	return false;
     }
 
-    $.each(sources, function (i, s) {
-	$("#sources").append($("<input>").attr({type: "checkbox", name: "source", value: s})).append(" "+s);
-    });
-
-    $("input[name=q]").change(refresh).keyup(refresh).focus();
-    refresh();
+    init();
+    writeFragmentToUi();
+    $("input[name=q]").change(onUiChange).keyup(onUiChange).focus();
+    $("input[name=source]").change(onUiChange);
+    //$(window).bind("hashchange", onHashChange);
+    onHashChange($.bbq);
 });
       // ]]>
     </script>
@@ -94,8 +191,10 @@ $(function () {
   <body>
     <div id="search">
       <div>Search: <input type="text" name="q"/></div>
-      <div id="sources">Sources (checking these doesn't work yet): </div>
+      <div id="sources">Sources: </div>
+      <div id="report"></div>
     </div>
+    <div id="pages"></div>
     <div id="results">
     </div>
   </body>

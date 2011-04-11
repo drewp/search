@@ -12,8 +12,11 @@ case class Highlight(text: List[String])
 case class Source(source: String, view: Option[String])
 case class Hit(_score: Double, _index: String, _id: String, _type: String, 
 	       _source: Source, highlight: Highlight)
-case class Hits(hits: List[Hit])
-case class HitsResponse(hits: Hits)
+case class Hits(hits: List[Hit], total: Int)
+case class FacetTerm(count: Int, term: String)
+case class FacetsSource(terms: List[FacetTerm])
+case class Facets(source: FacetsSource)
+case class HitsResponse(hits: Hits, facets: Facets, took: Int)
 
 class SearchApp extends ScalatraServlet {
   implicit val formats = net.liftweb.json.DefaultFormats
@@ -65,36 +68,39 @@ class SearchApp extends ScalatraServlet {
 
     val prefixQuery = JObject(List(JField("prefix", ("text" -> params("q")))))
 
-    val completeQuery = multiParams("source") match {
-      case Seq() => prefixQuery
-      case sources: Seq[String] => JObject(List(JField("filtered", (
-	("query" -> prefixQuery) ~
-	("filter" -> ("terms" -> ("source" -> sources)))
-      ))))
-    }
-    val elasticResponse = parse(http.x(elastic / "_search" <<? 
-				       Map("source" -> compact(render(
-      ("query" -> completeQuery) ~ 
+    val jsonQuery = compact(render(
+      ("query" -> prefixQuery) ~ 
+      // a filter out here is only on results; it doesn't affect facet counts
+      ("filter" -> ("terms" -> ("source" -> multiParams("source")))) ~ 
       ("highlight" -> (
         ("pre_tags" -> List("<em>")) ~
         ("post_tags" -> List("</em>")) ~
         ("fields" -> ("text" -> ("number_of_fragments" -> 2)))
-      ))
-    ))) as_str))
+      )) ~
+      ("facets" -> ("source" -> ("terms" -> ("field" -> "source"))))
+    ))
+    println(jsonQuery)
+    val elasticResponse = parse(
+      http.x(elastic / "_search" <<? Map("source" -> jsonQuery) as_str)
+    )
 
     val extracted = elasticResponse.extract[HitsResponse]
   
     compact(render(
-      extracted.hits.hits.map(h => Merge.merge(
-	("uri" -> h._id) ~
-	("text" -> h.highlight.text.mkString(" ")) ~
-	("source" -> h._source.source),
-	
-	h._source.view match {
-	  case None => JNothing
-	  case Some(view) => ("view" -> view)
-	})
-      )
+      ("hits" -> 
+       extracted.hits.hits.map(h => Merge.merge(
+	 ("uri" -> h._id) ~
+	 ("text" -> h.highlight.text.mkString(" ")) ~
+	 ("source" -> h._source.source),
+	 h._source.view match {
+	   case None => JNothing
+	   case Some(view) => ("view" -> view)
+	 }))) ~
+      ("sourceTotals" -> 
+       JObject(extracted.facets.source.terms.map(
+	 t => JField(t.term, t.count)))) ~
+      ("totalHits" -> extracted.hits.total) ~
+      ("took" -> extracted.took)
     ))
   }
 }
