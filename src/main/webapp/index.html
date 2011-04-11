@@ -22,6 +22,9 @@
       input[type=text] {
 	  padding: 5px;
       }
+      #sources {
+          margin: 6px 0;
+      }
       #results div {
 	  margin: 17px 0;
 	  width: 47em;
@@ -65,10 +68,6 @@
 	  color: #828282;
 	  font-size: 75%;
       }
-.cell-story {
-			white-space: normal!important;
-      line-height: 19px!important;
-		}
 
       /* ]]> */
     </style>
@@ -76,22 +75,18 @@
     <script type="text/javascript" src="lib/jquery.ba-bbq.min.js"></script>
     <script type="text/javascript" src="lib/underscore-min.js"></script>
 
-    <script src="lib/jquery.event.drag-2.0.min.js"></script>
-    <script src="lib/jquery.jsonp-1.1.0.min.js"></script>
-
-    <script src="lib/mleibman-SlickGrid-0ed544b/slick.core.js"></script>
-    <script src="lib/mleibman-SlickGrid-0ed544b/slick.remotemodel.js"></script>
-    <script src="lib/mleibman-SlickGrid-0ed544b/slick.grid.js"></script>
-    <link rel="stylesheet" href="lib/mleibman-SlickGrid-0ed544b/slick.grid.css" type="text/css" media="screen" charset="utf-8" />
-	
     <script type="text/javascript">
       // <![CDATA[
 $(function () {
+    /*
+      see also: https://github.com/paulirish/infinite-scroll
+    */
     jQuery.ajaxSettings.traditional = true;
 
     var sources = ["photo", "sfd", "drewblog", "chat", "aribot"];
     var totalSpan = {}; // source : span
     var currentParams;
+    var lastDisplayedRow = 0;
 
     function init() {
 	$.each(sources, function (i, s) {
@@ -113,15 +108,13 @@ $(function () {
 	checkedSources.sort();
 	var params = {
 	    source: checkedSources, 
-	    q: $("input[name=q]").val(), 
-	    from: 0}
+	    q: $("input[name=q]").val()}
 	$.bbq.pushState(params);
 	return params;
     }
 
     function writeFragmentToUi() {
 	var params = $.bbq.getState();
-	console.log("to ui", params);
 	$("input[name=q]").val(params.q || "");
 
 	if (!params['source']) {
@@ -132,7 +125,6 @@ $(function () {
 		$("#sources input[value="+s+"]").attr("checked", true);
 	    });
 	}
-	//offset
     }
 
     function onUiChange() {
@@ -151,6 +143,99 @@ $(function () {
 	}
     }
 
+    function makeRow(row) {
+	var newRow = $("<div>");
+	newRow.html(row.text);
+	if (row.source == "photo") {
+	    newRow.prepend($("<span>").addClass("thumb").append(
+		$("<img>").attr("src", row.uri + "?size=thumb")));
+	} else {
+	    newRow.prepend($("<span>").addClass("sourceName")
+			   .text(row.source));
+	}
+	newRow.wrapInner($("<a>").attr("href", row.view || row.uri));
+	return newRow;
+    }
+
+    function appendPage(hits) {
+	/*
+	  renders hits into the #results box, returning the last one
+	  (or undefined, if there were no rows)
+	*/
+	var newRow;
+	for (var i=0; i < hits.length; i++) {
+	    newRow = makeRow(hits[i]);
+	    $("#results").append(newRow);
+	} 
+
+	return newRow;
+    }
+    
+    function scrollWatch(element, callback) {
+	/*
+	  wait for element's bottom to be showing, call back once, and
+	  then we're done. 
+
+	  If the element is removed from the doc, we stop without calling back.
+	*/
+	function scrollCheck() {
+	    if (!element.closest('body').length) {
+		$(window).unbind("scroll", scrollCheck);
+		return;
+	    }
+
+	    var bottomY = element.offset().top + element.height();
+	    if (bottomY < $(document).scrollTop() + $(window).height()) {
+		$(window).unbind("scroll", scrollCheck);
+		callback();
+	    }
+	}
+	$(window).bind("scroll", scrollCheck);
+	setTimeout(scrollCheck, 10);
+    }
+
+    function getPage(params, offset) {
+	var thisCallParams = $.extend(true, {}, params);
+	var size = (offset == 0) ? 10 : (offset < 200 ? 50 : 500);
+	$.getJSON("search", $.extend({from: offset, size: size}, params), 
+		  function (ret) {
+		      if (!_.isEqual(currentParams, thisCallParams)) {
+			  return;
+		      }
+		      if (!ret.hits.length) {
+			  $("#results").append(
+			      $("<div>").text("End of results"));
+			  return;
+		      }
+		      var last = appendPage(ret.hits);
+		      lastDisplayedRow = lastDisplayedRow + ret.hits.length;
+		      waitForNextPage(params, last, lastDisplayedRow);
+
+		      $.each(ret.sourceTotals, function (k, v) {
+			  totalSpan[k].text(v);
+		      });
+		      var r = $("#report");
+		      if (r.hasClass("searching")) {
+			  $("#report")
+			      .attr("class", "found")
+			      .text("Found "+ret.totalHits+" matches. "+
+				    "Pages took ");
+		      }
+		      r.append(ret.took+" ms "); 
+		  });
+    }
+
+    function waitForNextPage(params, lastRow, offset) {
+	function cb() {
+	    getPage(params, offset);
+	}
+	if (lastRow) {
+	    scrollWatch(lastRow, cb);
+	} else {
+	    cb();
+	}
+    }
+
     function runSearch(params) {
 	if (_.isEqual(params, currentParams)) {
 	    return;
@@ -160,35 +245,16 @@ $(function () {
 	// debounce, here
 
 	$("#results").empty();
+	lastDisplayedRow = 0;
 	$("#sources .total").text("0");
-	console.log("para", params)
 	if (!params.q || !params.source) { 
 	    $("#report").text("Nothing to search for.");
 	    return;
 	}
-	$("#report").text("Searching...");
+	$("#report").attr("class", "searching").text("Searching...");
 
-	$.getJSON("search", params, function (ret) { 
-	    $("#results").empty();
-	    $.each(ret.hits, function (i, row) {
-		var div = $("<div>");
-		div.html(row.text);
-		if (row.source == "photo") {
-		    div.prepend($("<span>").addClass("thumb").append(
-			$("<img>").attr("src", row.uri + "?size=thumb")));
-		} else {
-		    div.prepend($("<span>").addClass("sourceName")
-				.text(row.source));
-		}
-		div.wrapInner($("<a>").attr("href", row.view || row.uri));
-		$("#results").append(div);
-	    });
-	    $.each(ret.sourceTotals, function (k, v) {
-		totalSpan[k].text(v);
-	    });
-	    $("#report").text("Found "+ret.totalHits+" hits in "+
-			      ret.took+" ms"); 
-	});
+	waitForNextPage(params, undefined, 0);
+
 	return false;
     }
 
@@ -196,147 +262,20 @@ $(function () {
     writeFragmentToUi();
     $("input[name=q]").change(onUiChange).keyup(onUiChange).focus();
     $("input[name=source]").change(onUiChange);
-    //$(window).bind("hashchange", onHashChange);
+    $(window).bind("hashchange", onHashChange);
     onHashChange($.bbq);
 });
-
-
-    var grid;
-    var data = [];
-    var loader = new Slick.Data.RemoteModel();
-    var myReq = null;
-    var PAGESIZE = 5;
-    var searchstr = "apple";
-    var sortcol = null;
-    var sortdir = 1;
-
-    loader.ensureData = function(from, to) {
-	console.log("ensure", from, to);
-	if (myReq) {
-	    myReq.abort();
-	    for (var i=myReq.fromPage; i<=myReq.toPage; i++)
-		loader.data[i*PAGESIZE] = undefined;
-	}
-
-	if (from < 0)
-	    from = 0;
-
-	var fromPage = Math.floor(from / PAGESIZE);
-	var toPage = Math.floor(to / PAGESIZE);
-
-	while (loader.data[fromPage * PAGESIZE] !== undefined && fromPage < toPage)
-	    fromPage++;
-
-	while (loader.data[toPage * PAGESIZE] !== undefined && fromPage < toPage)
-	    toPage--;
-
-	if (fromPage > toPage || ((fromPage == toPage) && loader.data[fromPage*PAGESIZE] !== undefined)) {
-	    // TODO:  look-ahead
-	    return;
-	}
-
-	console.log("req offset", fromPage * PAGESIZE, 
-		    "count",  (((toPage - fromPage) * PAGESIZE) + PAGESIZE))
-
-	for (var i=fromPage; i<=toPage; i++)
-	    loader.data[i*PAGESIZE] = null; // null indicates a 'requested but not available yet'
-
-	loader.onDataLoading.notify({from:from, to:to});
-
-	var success = function(resp) {
-	    var from = fromPage*PAGESIZE, to = from + resp.count;
-	    loader.data.length = parseInt(resp.total);
-
-	    for (var i = 0; i < resp.stories.length; i++) {
-                loader.data[from + i] = resp.stories[i];
-                loader.data[from + i].index = from + i;
-	    }
-	    myReq = null;
-
-	    loader.onDataLoaded.notify({from:from, to:to}); // send timing
-	}
-	success({count: 5, total: 200, stories: [
-	    {desc: "hello1"},
-	    {desc: "hello2"},
-	    {desc: "hello3"},
-	    {desc: "hello4"},
-	    {desc: "hello5"},
-	]})
-    }
-
-    var columns = [
-	{id:"desc", name:"desc", field:"desc", width:400},
-    ];
-
-    var options = {
-	rowHeight: 64,
-	editable: false,
-	enableAddRow: false,
-	enableCellNavigation: false,
-	enableColumnReorder: false
-    };
-
-    var loadingIndicator = null;
-
-    $(function()
-      {
-	  grid = new Slick.Grid("#myGrid", loader.data, columns, options);
-	  
-
-	  grid.onViewportChanged.subscribe(function(e,args) {
-              var vp = grid.getViewport();
-              loader.ensureData(vp.top, vp.bottom);
-          });
-
-	  grid.onSort.subscribe(function(e,args) {
-              loader.setSort(args.sortCol.field, args.sortAsc ? 1 : -1);
-              var vp = grid.getViewport();
-              loader.ensureData(vp.top, vp.bottom);
-          });
-
-	  loader.onDataLoading.subscribe(function() {
-	      $("#report").text("Loading...");
-	  });
-
-	  loader.onDataLoaded.subscribe(function(e,args) {
-	      for (var i = args.from; i <= args.to; i++) {
-		  grid.invalidateRow(i);
-	      }
-
-	      grid.updateRowCount();
-	      grid.render();
-
-	      $("#report").text("Ok");
-	  });
-
-	  $("#txtSearch").keyup(function(e) {
-              if (e.which == 13) {
-                  loader.setSearch($(this).val());
-                  var vp = grid.getViewport();
-                  loader.ensureData(vp.top, vp.bottom);
-              }
-          });
-
-	  // load the first page
-	  grid.onViewportChanged.notify();
-      })
-
 
       // ]]>
     </script>
   </head>
   <body>
-    <div id="search">
+    <form id="search" autocomplete="off">
       <div>Search: <input type="text" name="q"/></div>
       <div id="sources">Sources: </div>
       <div id="report"></div>
-    </div>
-    <div id="pages"></div>
+    </form>
     <div id="results">
     </div>
-
-			<div id="myGrid" style="width:100%;height:600px;"></div>
-			<div id="pager" style="width:100%;height:20px;"></div>
-
   </body>
 </html>
