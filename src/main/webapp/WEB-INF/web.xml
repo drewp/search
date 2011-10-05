@@ -16,12 +16,16 @@ PUBLIC "-//Sun Microsystems, Inc.//DTD Web Application 2.2//EN"
   
   <servlet-mapping>
     <servlet-name>SearchApp</servlet-name>
-    <url-pattern>/index</url-pattern>
+    <url-pattern>/*</url-pattern>
   </servlet-mapping>
 
-  <servlet-mapping>
-    <servlet-name>SearchApp</servlet-name>
-    <url-pattern>/search</url-pattern>
-  </servlet-mapping>
+  <mime-mapping>
+    <extension>xhtml</extension>
+    <mime-type>application/xhtml+xml</mime-type>
+  </mime-mapping>
+
+  <welcome-file-list>
+    <welcome-file>/index.xhtml</welcome-file>
+  </welcome-file-list>
 
 </web-app>

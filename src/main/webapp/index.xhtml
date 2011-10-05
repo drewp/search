@@ -25,7 +25,7 @@
       #sources {
           margin: 6px 0;
       }
-      #results div {
+      #results > div {
 	  margin: 17px 0;
 	  width: 47em;
       }
@@ -36,7 +36,6 @@
       span.thumb {
 	  display: inline-block;
 	  height: 66px;
-	  vertical-align: middle;
 	  width: 86px;
       }
       span.thumb img {
@@ -51,10 +50,12 @@
 	  color: gray;
 	  background: #DEDEDE;
 	  margin-right: 15px;
+	  vertical-align: top;
       }
       a {
 	  text-decoration: none;
 	  color: default;
+	  white-space: nowrap;
       } 
       .total {
 	  color: #ABABAB;
@@ -68,12 +69,25 @@
 	  color: #828282;
 	  font-size: 75%;
       }
-
+      h4 {
+	  margin: 0;
+	  font-size: 100%;
+	  text-decoration: underline;
+      }
+      #results > div > a > span + span {
+	  display: inline-block;
+	  white-space: normal;
+      } 
+      .snip {
+	  color: black;
+	  font-size: 90%;
+      }
       /* ]]> */
     </style>
     <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.5.1/jquery.min.js"></script>
     <script type="text/javascript" src="lib/jquery.ba-bbq.min.js"></script>
     <script type="text/javascript" src="lib/underscore-min.js"></script>
+    <script type="text/javascript" src="lib/mustache.js"></script>
 
     <script type="text/javascript">
       // <![CDATA[
@@ -86,6 +100,10 @@ $(function () {
 	$(this).text("Error running search");
     });
 
+    // i know all my %7B and %7D are {} inside attributes
+    var rowTemplate = ($("#rowTemplate").html()
+		       .replace(/%7B/g, "{")
+		       .replace(/%7D/g, "}"));
     var sources = ["photo", "sfd", "drewblog", "chat", "aribot"];
     var totalSpan = {}; // source : span
     var currentParams;
@@ -146,19 +164,19 @@ $(function () {
 	}
     }
 
-    function addRow(row) {
-	var newRow = $("<div>");
-	newRow.html(row.text);
+    function renderRow(row) {
+	var data = {
+	    link: row.view || row.uri,
+	    text: row.text,
+	    title: row.title,
+	};
 	if (row.source == "photo") {
-	    newRow.prepend($("<span>").addClass("thumb").append(
-		$("<img>").attr("src", row.uri + "?size=thumb")));
+	    data.photo = {src: row.uri + "?size=thumb"};
 	} else {
-	    newRow.prepend($("<span>").addClass("sourceName")
-			   .text(row.source));
+	    data.source = row.source;
 	}
-	newRow.wrapInner($("<a>").attr("href", row.view || row.uri));
-	$("#results").append(newRow);
-	return newRow;
+ 	console.log(rowTemplate)
+	return Mustache.to_html(rowTemplate, data);
     }
 
     function appendPage(hits) {
@@ -172,7 +190,9 @@ $(function () {
 	// note that we will have to attach a scrollWatch to the last
 	// row somehow
 	for (var i=0; i < hits.length; i++) {
-	    newRow = addRow(hits[i]);
+	    var newRow = $("<div>");
+	    newRow.html(renderRow(hits[i]));
+	    $("#results").append(newRow);
 	} 
 	return newRow;
     }
@@ -283,5 +303,19 @@ $(function () {
     </form>
     <div id="results">
     </div>
+
+    <div style="display: none">
+      <div id="rowTemplate">
+	<a href="{{link}}">
+	  {{#photo}}<span class="thumb"><img src="{{src}}"/></span>{{/photo}}
+	  {{^photo}}<span class="sourceName">{{source}}</span>{{/photo}}
+	  <span>
+	    <h4>{{title}}</h4>
+	    <div class="snip">{{{text}}}</div>
+	  </span>
+	</a>
+      </div>
+    </div>
+
   </body>
 </html>
