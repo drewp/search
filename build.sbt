@@ -1,3 +1,5 @@
+import AssemblyKeys._
+
 name := "search"
 
 version := "1.7"
@@ -8,12 +10,15 @@ mainClass := Some("JettyLauncher")
 
 seq(webSettings :_*)
 
+seq(assemblySettings: _*)
+
 libraryDependencies ++= Seq(
   "org.scalatra" % "scalatra_2.9.1" % "2.0.4",
   "org.scalatra" % "scalatra-specs_2.9.1" % "2.0.4" % "test",
-  "org.mortbay.jetty" % "jetty" % "6.1.22" % "container",
-  "org.mortbay.jetty" % "jetty-servlet-tester" % "6.1.22" % "provided-> default",
-  "javax.servlet" % "servlet-api" % "2.5" % "provided->default",
+  "org.mortbay.jetty" % "servlet-api" % "3.0.20100224" % "provided",
+  "org.eclipse.jetty" % "jetty-server" % "8.0.0.M3" % "container, compile",
+  "org.eclipse.jetty" % "jetty-util" % "8.0.0.M3" % "container, compile",
+  "org.eclipse.jetty" % "jetty-webapp" % "8.0.0.M3" % "container, compile",
   "net.databinder" %% "dispatch-http" % "0.8.8",
   "org.slf4j" % "slf4j-api" % "1.6.1",
   "org.slf4j" % "slf4j-simple" % "1.6.1",
