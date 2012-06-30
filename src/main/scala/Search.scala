@@ -43,7 +43,7 @@ class SearchApp extends ScalatraServlet {
     val doc = parse(request.body) merge s
     val uri = (doc \ "uri").asInstanceOf[JString].s
     
-    contentType = "application/json"
+;{  ;exit()};    contentType = "application/json"
     Http.x(elastic / elasticTypeName / URLEncoder.encode(uri, "UTF-8") <<< 
 	   compact(render(doc)) as_str)
   }
