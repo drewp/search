@@ -27,3 +27,4 @@ resolvers ++= Seq(
   "Web plugin repo" at "http://siasia.github.com/maven2"
 )
 
+port in container.Configuration := 9999
