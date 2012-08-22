@@ -27,6 +27,8 @@ class SearchApp extends ScalatraServlet {
 // need to make the index like this:
 // curl -XPUT http://bang:9200/main/ -d '{"settings":{"index":{"number_of_shards":1}}}'
 
+// consider http://www.elasticsearch.org/guide/reference/index-modules/analysis/htmlstrip-charfilter.html since we're going to display the text fields raw, but make sure it doesn't lose the content text of <a> tags
+
   post("/index") {
     /*
      param source=<data source name>
@@ -81,6 +83,7 @@ class SearchApp extends ScalatraServlet {
       ("highlight" -> (
         ("pre_tags" -> List("<em>")) ~
         ("post_tags" -> List("</em>")) ~
+	("encoder" -> "html") ~
         ("fields" -> ("text" -> ("number_of_fragments" -> 2)))
       )) ~
       ("facets" -> ("source" -> ("terms" -> ("field" -> "source"))))

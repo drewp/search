@@ -100,10 +100,7 @@ $(function () {
 	$(this).text("Error running search");
     });
 
-    // i know all my %7B and %7D are {} inside attributes
-    var rowTemplate = ($("#rowTemplate").html()
-		       .replace(/%7B/g, "{")
-		       .replace(/%7D/g, "}"));
+    var rowTemplate = $("#rowTemplate").text();
     var sources = ["photo", "sfd", "drewblog", "chat", "aribot"];
     var totalSpan = {}; // source : span
     var currentParams;
@@ -175,7 +172,6 @@ $(function () {
 	} else {
 	    data.source = row.source;
 	}
- 	console.log(rowTemplate)
 	return Mustache.to_html(rowTemplate, data);
     }
 
@@ -304,8 +300,9 @@ $(function () {
     <div id="results">
     </div>
 
-    <div style="display: none">
-      <div id="rowTemplate">
+    <script type="x-template" id="rowTemplate">
+<![CDATA[
+      <div>
 	<a href="{{link}}">
 	  {{#photo}}<span class="thumb"><img src="{{src}}"/></span>{{/photo}}
 	  {{^photo}}<span class="sourceName">{{source}}</span>{{/photo}}
@@ -315,7 +312,8 @@ $(function () {
 	  </span>
 	</a>
       </div>
-    </div>
+]]>
+    </script>
 
   </body>
 </html>
