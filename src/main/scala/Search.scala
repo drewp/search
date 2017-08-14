@@ -1,10 +1,16 @@
 import org.scalatra._
-import dispatch._
+import dispatch.Http
 import Http._
 import net.liftweb.json._
 import net.liftweb.json.JsonDSL._
 import java.net.URLEncoder
 
+import org.scalatra._
+import scalate.ScalateSupport
+import org.fusesource.scalate.{ TemplateEngine, Binding }
+import org.fusesource.scalate.layout.DefaultLayoutStrategy
+import javax.servlet.http.HttpServletRequest
+import collection.mutable
 
 case class Highlight(text: List[String])
 case class Source(source: String, view: Option[String], title: Option[String])
@@ -25,7 +31,7 @@ class SearchApp extends ScalatraServlet {
   val elasticTypeName = "doc"; 
 
 // need to make the index like this:
-// curl -XPUT http://bang:9200/main/ -d '{"settings":{"index":{"number_of_shards":1}}}'
+// curl -XPUT http://bang:9200/main/ -d '{"settings":{"index":{"number_of_shards":1}},"mappings":{"doc":{"properties":{"source":{"type":"keyword"}}}}}'
 
 // consider http://www.elasticsearch.org/guide/reference/index-modules/analysis/htmlstrip-charfilter.html since we're going to display the text fields raw, but make sure it doesn't lose the content text of <a> tags
 
