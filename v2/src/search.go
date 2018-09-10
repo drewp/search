@@ -276,7 +276,13 @@ func Search(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	resp, err := http.Get(u)
 	defer resp.Body.Close()
 	if err != nil || resp.StatusCode != 200 {
-		http.Error(w, "elastic error", 500)
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			http.Error(w, "can't read elastic body", 500)
+			return
+		}
+		http.Error(w, "elastic error: " + string(body), 500)
+		
 		return
 	}
 	returnedJson := new(bytes.Buffer)
